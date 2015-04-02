@@ -33,6 +33,10 @@ public class MapsFirebase {
     MapsFirebase.fbListener = fbListener;
     Firebase.setAndroidContext(androidContext);
     fbRef = new Firebase(firebaseURL);
+    
+    /**
+     * Added auto user creation
+     */
     fbRef.createUser(username, password, new ResultHandler() {
 
         @Override
@@ -48,6 +52,11 @@ public class MapsFirebase {
         }
       
     });
+    /**
+     * End auto user creation
+     */
+    
+    
     fbRef.authWithPassword(username, password,
         new Firebase.AuthResultHandler() {
         @Override
