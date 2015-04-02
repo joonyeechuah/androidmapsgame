@@ -188,7 +188,7 @@ public class MapsFirebase {
             for(DataSnapshot child : snapshot.getChildren()) {
                 try {
                   String team = child.getKey();
-                  Collection<String> playerList = ((Map<Long,String>)child.getValue()).values();
+                  Collection<String> playerList = ((Map<String,String>)child.getValue()).values();
                   for (String player : playerList ) {
                     MapsFirebase.fbListener.teamRosterUpdate(player, team);
                   }
