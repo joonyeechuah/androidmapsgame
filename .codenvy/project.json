@@ -1,0 +1,1 @@
+{"mixinTypes":["contribution"],"builders":{"configs":{},"default":"maven"},"runners":{"configs":{}},"description":"Android Map Project","type":"maven","attributes":{"languageVersion":["1.6"],"language":["java"],"contribute_branch":["master"],"contribute_mode":["contribute"]}}
