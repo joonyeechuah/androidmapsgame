@@ -21,6 +21,7 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -30,6 +31,7 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationListener;
 import android.location.Location;
 import android.support.v4.app.DialogFragment;
+import android.widget.Toast;
 
 public class MapsActivity extends FragmentActivity implements GoogleApiClient.ConnectionCallbacks, 
   GoogleApiClient.OnConnectionFailedListener, LocationListener, MapsFirebase.MapsFirebaseListener {
@@ -48,8 +50,10 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private static final String DIALOG_ERROR = "dialog_error";
     // Bool to track whether the app is already resolving an error
     
-    HashMap<String, Marker> playerMarkers = new HashMap<String, Marker>();
-  
+    HashMap<String, Player> players = new HashMap<String, Player>();
+    Marker blueSpawn = null;
+    Marker redSpawn = null;
+    HashMap<String, Marker> capturePoints = new HashMap<String, Marker>();
   
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -148,6 +152,13 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
      */
     
     private void setUpMap() {
+		blueSpawn = mMap.addMarker(new MarkerOptions().position(new LatLng(0, 0)).icon(BitmapDescriptorFactory.defaultMarker(
+             BitmapDescriptorFactory.HUE_BLUE)).title("Blue Spawn"));
+      blueSpawn.showInfoWindow();
+      redSpawn = mMap.addMarker(new MarkerOptions().position(new LatLng(0, 0)).icon(BitmapDescriptorFactory.defaultMarker(
+             BitmapDescriptorFactory.HUE_RED)).title("Red Spawn"));        
+        redSpawn.showInfoWindow();
+      
       MapsFirebase.startFirebase(this, this, "user", "password");
     }
 
@@ -256,6 +267,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
                                     
                                                        );
         mMap.moveCamera(CameraUpdateFactory.newCameraPosition(newPosition));
+        MapsFirebase.setMyPosition(new LatLng(l.getLatitude(), l.getLongitude()));
       
     }
 
@@ -268,24 +280,71 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     }
     
     public void playerPositionUpdate(String playerId, LatLng position) {
-      if (playerMarkers.containsKey(playerId)) {
-	      playerMarkers.get(playerId).setPosition(position);
+      if (!players.containsKey(playerId)) {
+        players.put(playerId, new Player(mMap));
+      }
+      players.get(playerId).marker.setPosition(position);      
+    }
+    
+    public void playerStatusUpdate(String playerId, String status) {
+      if (playerId.equals(MapsFirebase.myPlayerId())) {
+        if (status.equals("dead")) {
+          Toast.makeText(this, "YOU DIED. GO RESPAWN.", Toast.LENGTH_LONG).show();
+        }
+        if (status.equals("alive")) {
+          Toast.makeText(this, "YOU ARE ALIVE. GO DOMINATE!!!!.", Toast.LENGTH_LONG).show();
+        }
+      }
+      if (!players.containsKey(playerId)) {
+        players.put(playerId, new Player(mMap));
+      }
+      if (status.equals("dead")) {
+	      players.get(playerId).marker.setAlpha(0.5f);
+      }
+      if (status.equals("alive")) {
+         players.get(playerId).marker.setAlpha(1.0f);
       }
     }
-    public void playerStatusUpdate(String playerId, String status) {
-      
-    }
     public void capturePointUpdate(String capturePoint, LatLng position) {
+      if (!capturePoints.containsKey(capturePoint)) {
+        capturePoints.put(capturePoint, mMap.addMarker(new MarkerOptions().position(position).icon(BitmapDescriptorFactory.defaultMarker(
+             BitmapDescriptorFactory.HUE_GREEN)).title(capturePoint)));
+        capturePoints.get(capturePoint).showInfoWindow();
+      }
+      capturePoints.get(capturePoint).setPosition(position);
       
     }
     public void teamScoreUpdate(String team, int score) {
+      if (team.equals("blue")) {
+        blueSpawn.setSnippet("Score: " + score);
+      }
+      if (team.equals("red")) {
+        redSpawn.setSnippet("Score: " + score);
+      }
       
     }
     public void teamRosterUpdate(String playerId, String team) {
-      
+		if (!players.containsKey(playerId)) {
+        players.put(playerId, new Player(mMap));
+      }
+      if (team.equals("red")) {
+	      players.get(playerId).marker.setIcon(
+           BitmapDescriptorFactory.defaultMarker(
+             BitmapDescriptorFactory.HUE_RED));
+      }
+      if (team.equals("blue")) {
+	      players.get(playerId).marker.setIcon(
+           BitmapDescriptorFactory.defaultMarker(
+             BitmapDescriptorFactory.HUE_BLUE));        
+      }
     }
     public void spawnPointUpdate(String team, LatLng position) {
-      
+      if (team.equals("blue")) {
+        blueSpawn.setPosition(position);
+      }
+      if (team.equals("red")) {
+        redSpawn.setPosition(position);
+      }
     }
     
 }
