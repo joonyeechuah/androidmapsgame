@@ -3,6 +3,7 @@
 package org.kealinghornets.jchuah.mapsapplication;
 
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +27,8 @@ public class MapsFirebase {
   static Firebase fbRef = null;
   static AuthData authData = null;
   static Context androidContext = null;
+  static String username = "";
+  static String password = "";
   
   
   public static void startFirebase(Context androidContext, MapsFirebaseListener fbListener, String username, String password) {
@@ -37,18 +40,23 @@ public class MapsFirebase {
     /**
      * Added auto user creation
      */
+    Log.d("Firebase Create User", "creating user " + username + " with password " + password);
+    MapsFirebase.username = username;
+    MapsFirebase.password = password;
     fbRef.createUser(username, password, new ResultHandler() {
 
         @Override
         public void onError(FirebaseError arg0) {
             // TODO Auto-generated method stub
-            
+            Log.d("Firebase Create User", "failure");
+          	MapsFirebase.completeLogin();
         }
 
         @Override
         public void onSuccess() {
             // TODO Auto-generated method stub
-            
+            Log.d("Firebase Create User", "success");
+          MapsFirebase.completeLogin();
         }
       
     });
@@ -57,7 +65,12 @@ public class MapsFirebase {
      */
     
     
-    fbRef.authWithPassword(username, password,
+    
+  }
+  
+  private static void completeLogin() {
+    Log.d("Firebase Complete Login", "Attempting to complete login");
+		fbRef.authWithPassword(MapsFirebase.username, MapsFirebase.password,
         new Firebase.AuthResultHandler() {
         @Override
         public void onAuthenticated(AuthData authData) {
@@ -67,11 +80,13 @@ public class MapsFirebase {
             	Log.d("Auth Data", "key: " + k + " value: " + authData.getAuth().get(k));
 	         }
             MapsFirebase.authData = authData;
+            Log.d("Firebase Complete Login", "Authorized user");
             MapsFirebase.addListeners();
         }
         @Override
         public void onAuthenticationError(FirebaseError error) {
             // Something went wrong :(
+            Log.d("Firebase Complete Login", "Authentication error");
         }
     });
     
@@ -80,9 +95,7 @@ public class MapsFirebase {
         public void onAuthStateChanged(AuthData authData) {
             MapsFirebase.authData = authData;
         }
-    });
-
-    
+    });    
   }
   
   private static void addListeners() {
@@ -105,6 +118,7 @@ public class MapsFirebase {
                   MapsFirebase.fbListener.playerPositionUpdate(player, new LatLng(lat, longitude) );
 
                 } catch (Exception e) {
+                  Log.d("MapsFirebase PlayerPositions", "Exception: " + e.getMessage() + " snapshot: " + snapshot.getKey() + ": " + snapshot.getValue());
                   Toast.makeText(androidContext, e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             }
@@ -127,10 +141,10 @@ public class MapsFirebase {
                   MapsFirebase.fbListener.playerStatusUpdate(player, status);
 
                 } catch (Exception e) {
+                  Log.d("MapsFirebase PlayerStatuses", "Exception: " + e.getMessage() + " snapshot: " + snapshot.getKey() + ": " + snapshot.getValue());
                   Toast.makeText(androidContext, e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             }  
-          MapsFirebase.fbListener.playerStatusUpdate("", null);
         }
     });
     fbRef.child("CapturePoints").addValueEventListener(new ValueEventListener() {
@@ -153,10 +167,10 @@ public class MapsFirebase {
                   MapsFirebase.fbListener.capturePointUpdate(capturePoint, new LatLng(lat, longitude));
 
                 } catch (Exception e) {
+                  Log.d("MapsFirebase CapturePoints", "Exception: " + e.getMessage() + " snapshot: " + snapshot.getKey() + ": " + snapshot.getValue());
                   Toast.makeText(androidContext, e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             }
-        		MapsFirebase.fbListener.capturePointUpdate(null, null);
         }
     });
     fbRef.child("TeamScores").addValueEventListener(new ValueEventListener() {
@@ -177,10 +191,10 @@ public class MapsFirebase {
                   MapsFirebase.fbListener.teamScoreUpdate(team, (int)score);
 
                 } catch (Exception e) {
+                  Log.d("MapsFirebase TeamScores", "Exception: " + e.getMessage() + " snapshot: " + snapshot.getKey() + ": " + snapshot.getValue());
                   Toast.makeText(androidContext, e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             }
-          MapsFirebase.fbListener.teamScoreUpdate(null, 0);
         }
     });
     fbRef.child("TeamRoster").addValueEventListener(new ValueEventListener() {
@@ -197,12 +211,13 @@ public class MapsFirebase {
             for(DataSnapshot child : snapshot.getChildren()) {
                 try {
                   String team = child.getKey();
-                  Collection<String> playerList = ((Map<String,String>)child.getValue()).values();
+                  ArrayList<String> playerList = (ArrayList<String>)child.getValue();
                   for (String player : playerList ) {
                     MapsFirebase.fbListener.teamRosterUpdate(player, team);
                   }
 
                 } catch (Exception e) {
+                  Log.d("MapsFirebase TeamRoster", "Exception: " + e.getMessage() + " snapshot: " + snapshot.getKey() + ": " + snapshot.getValue());
                   Toast.makeText(androidContext, e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             }
@@ -229,6 +244,7 @@ public class MapsFirebase {
                   MapsFirebase.fbListener.spawnPointUpdate(spawnPoint, new LatLng(lat, longitude) );
 
                 } catch (Exception e) {
+                  Log.d("MapsFirebase SpawnPoints", "Exception: " + e.getMessage() + " snapshot: " + snapshot.getKey() + ": " + snapshot.getValue());
                   Toast.makeText(androidContext, e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             }

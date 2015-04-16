@@ -1,11 +1,15 @@
 package org.kealinghornets.jchuah.mapsapplication;
 
 
+import org.kealinghornets.jchuah.mapsapplication.MapsFirebase.MapsFirebaseListener;
+
 import java.util.HashMap;
 
 import android.os.Bundle;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender.SendIntentException;
@@ -31,6 +35,9 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationListener;
 import android.location.Location;
 import android.support.v4.app.DialogFragment;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.Toast;
 
 public class MapsActivity extends FragmentActivity implements GoogleApiClient.ConnectionCallbacks, 
@@ -158,8 +165,18 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
       redSpawn = mMap.addMarker(new MarkerOptions().position(new LatLng(0, 0)).icon(BitmapDescriptorFactory.defaultMarker(
              BitmapDescriptorFactory.HUE_RED)).title("Red Spawn"));        
         redSpawn.showInfoWindow();
+
+                  this.runOnUiThread(new Runnable() {
+
+        @Override
+        public void run() {
+            // TODO Auto-generated method stub
+            showLoginDialog();
+        }
+        
+      });
+      mMap.setMyLocationEnabled(true);
       
-      MapsFirebase.startFirebase(this, this, "user", "password");
     }
 
     @Override
@@ -200,8 +217,46 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             showErrorDialog(result.getErrorCode());
             mResolvingError = true;
         } 
-        
-        
+    }
+    
+    private void showLoginDialog() {
+      		LayoutInflater li = LayoutInflater.from(this);
+				View promptsView = li.inflate(R.layout.login, null);
+ 
+				AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(
+						this);
+ 
+				// set prompts.xml to alertdialog builder
+				alertDialogBuilder.setView(promptsView);
+ 
+				final EditText userInput = (EditText) promptsView
+						.findViewById(R.id.editTextEmail);
+      	   final Context context = this;
+      		final MapsFirebaseListener fbListener = this;
+ 
+				// set dialog message
+				alertDialogBuilder
+					.setCancelable(false)
+					.setPositiveButton("OK",
+					  new DialogInterface.OnClickListener() {
+					    public void onClick(DialogInterface dialog,int id) {
+						// get user input and set it to result
+						// edit text
+						 MapsFirebase.startFirebase(context, fbListener, userInput.getText().toString(), "password");
+					    }
+					  })
+					.setNegativeButton("Cancel",
+					  new DialogInterface.OnClickListener() {
+					    public void onClick(DialogInterface dialog,int id) {
+						dialog.cancel();
+					    }
+					  });
+ 
+				// create alert dialog
+				AlertDialog alertDialog = alertDialogBuilder.create();
+ 
+				// show it
+				alertDialog.show();
     }
     
     private void showErrorDialog(int errorCode) {
@@ -258,16 +313,19 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
 
     @Override
     public void onLocationChanged(Location l) {
+
         // TODO Auto-generated method stub
         mCurrentLocation = l;
         CameraPosition newPosition = new CameraPosition(new LatLng( l.getLatitude(), l.getLongitude()),
-                                                       10,
+                                                       18.5f,
                                                        10,
                                                        l.getBearing()
                                     
                                                        );
         mMap.moveCamera(CameraUpdateFactory.newCameraPosition(newPosition));
-        MapsFirebase.setMyPosition(new LatLng(l.getLatitude(), l.getLongitude()));
+        if (MapsFirebase.authData != null) {
+          MapsFirebase.setMyPosition(new LatLng(l.getLatitude(), l.getLongitude()));
+        }
       
     }
 
