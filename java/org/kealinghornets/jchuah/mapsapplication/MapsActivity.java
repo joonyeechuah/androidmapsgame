@@ -3,8 +3,11 @@ package org.kealinghornets.jchuah.mapsapplication;
 
 import org.kealinghornets.jchuah.mapsapplication.MapsFirebase.MapsFirebaseListener;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Random;
 
+import android.os.Handler;
 import android.os.Bundle;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -60,7 +63,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     HashMap<String, Player> players = new HashMap<String, Player>();
     Marker blueSpawn = null;
     Marker redSpawn = null;
-    HashMap<String, Marker> capturePoints = new HashMap<String, Marker>();
+    HashMap<String, CapturePoint> capturePoints = new HashMap<String, CapturePoint>();
   
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -166,7 +169,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
              BitmapDescriptorFactory.HUE_RED)).title("Red Spawn"));        
         redSpawn.showInfoWindow();
 
-                  this.runOnUiThread(new Runnable() {
+		this.runOnUiThread(new Runnable() {
 
         @Override
         public void run() {
@@ -219,6 +222,115 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         } 
     }
     
+  private Handler h = new Handler();
+  
+  private Runnable tick = new Runnable() {
+
+    @Override
+    public void run() {
+      
+      
+      Toast.makeText(MapsFirebase.androidContext, "Admin Update", Toast.LENGTH_SHORT).show();
+      
+      if (!adminInitComplete) {
+        adminInit();
+      } else {
+        for (String capture : capturePoints.keySet()) {
+        	calcCapturePoint(capture);
+        }
+        respawnPlayers();
+      }
+      
+      h.postDelayed(tick, 5000);
+    }
+    
+  };
+    
+  private void respawnPlayers() {
+    for (String playerId : players.keySet()) {
+      Player p = players.get(playerId);
+      if (p.team.equals("blue")) {
+      	if (distance(p.marker.getPosition(), blueSpawn.getPosition()) < threshold) {
+           MapsFirebase.setPlayerState(playerId, "alive");
+         }
+      }
+      if (p.team.equals("red")) {
+      	if (distance(p.marker.getPosition(), redSpawn.getPosition()) < threshold) {
+           MapsFirebase.setPlayerState(playerId, "alive");
+         }
+      }
+    }
+  }
+  
+  private void adminStart() {
+    admin = true;
+    
+    h.postDelayed(tick, 5000);
+  }
+    
+    private int redscore = 0;
+    private int bluescore = 0;
+    private double boxBound = 0.0002;
+    private double spawnDistance = 0.0001;
+    private double threshold = 0.00005;
+    private boolean admin = false;
+    private boolean adminInitComplete = false;
+    private LatLng myLocation = null;
+    private int scoreThreshold = 50;
+    
+    private void adminInit() {
+      if (myLocation != null) {
+        MapsFirebase.setSpawnPoint("red", new LatLng(myLocation.latitude + spawnDistance, myLocation.longitude));
+        MapsFirebase.setSpawnPoint("blue", new LatLng(myLocation.latitude - spawnDistance, myLocation.longitude));
+        MapsFirebase.setCapturePoint("Capture Point 1", randomLocation());
+        MapsFirebase.setCapturePoint("Capture Point 2", randomLocation());
+        MapsFirebase.setCapturePoint("Capture Point 3", randomLocation());
+        adminInitComplete = true;
+      }
+    }
+    
+    private void calcCapturePoint(String capture) {
+      CapturePoint c = capturePoints.get(capture);
+      LatLng p1 = c.marker.getPosition();
+      
+      ArrayList<String> nearPlayers = new ArrayList<String>();
+      for (String playerId : players.keySet()) {
+        if (players.get(playerId).status.equals("alive") && distance(p1, players.get(playerId).marker.getPosition()) < threshold) {
+          nearPlayers.add(playerId);
+        }
+      }
+      MapsFirebase.setPlayerState(nearPlayers.get(rand.nextInt(nearPlayers.size())), "dead");
+      for (String playerId : nearPlayers) {
+        if (players.get(playerId).team.equals("red")) {
+          redscore++;
+        }
+        if (players.get(playerId).team.equals("blue")) {
+          bluescore++;
+        }
+      }
+      c.scoreCount += nearPlayers.size();
+      MapsFirebase.setTeamScore("red", redscore);
+      MapsFirebase.setTeamScore("blue", bluescore);
+      if (c.scoreCount > scoreThreshold) {
+        MapsFirebase.setCapturePoint(capture, randomLocation() );
+      }
+    }
+    
+    private double distance(LatLng p1, LatLng p2) {
+      double x1 = p1.latitude;
+      double x2 = p2.latitude;
+      double y1 = p1.longitude;
+      double y2 = p2.longitude;
+      return Math.sqrt( Math.pow(x1-x2, 2) + Math.pow(y1-y2, 2));
+    }
+    
+    private static Random rand = new Random();
+    private LatLng randomLocation() {
+      double latOffset = rand.nextDouble() * boxBound * 2;
+      double longOffset = rand.nextDouble() * boxBound * 2;
+      return new LatLng(myLocation.latitude - boxBound + latOffset, myLocation.longitude - boxBound + longOffset);
+    }
+    
     private void showLoginDialog() {
       		LayoutInflater li = LayoutInflater.from(this);
 				View promptsView = li.inflate(R.layout.login, null);
@@ -243,6 +355,9 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
 						// get user input and set it to result
 						// edit text
 						 MapsFirebase.startFirebase(context, fbListener, userInput.getText().toString(), "password");
+						 if (MapsFirebase.myPlayerId().equals("simplelogin:17")) {
+              				adminStart();
+            			}
 					    }
 					  })
 					.setNegativeButton("Cancel",
@@ -326,6 +441,8 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         if (MapsFirebase.authData != null) {
           MapsFirebase.setMyPosition(new LatLng(l.getLatitude(), l.getLongitude()));
         }
+        myLocation = new LatLng(l.getLatitude(), l.getLongitude());
+     
       
     }
 
@@ -365,11 +482,10 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     }
     public void capturePointUpdate(String capturePoint, LatLng position) {
       if (!capturePoints.containsKey(capturePoint)) {
-        capturePoints.put(capturePoint, mMap.addMarker(new MarkerOptions().position(position).icon(BitmapDescriptorFactory.defaultMarker(
-             BitmapDescriptorFactory.HUE_GREEN)).title(capturePoint)));
-        capturePoints.get(capturePoint).showInfoWindow();
+        capturePoints.put(capturePoint, new CapturePoint(mMap));
+        capturePoints.get(capturePoint).marker.showInfoWindow();
       }
-      capturePoints.get(capturePoint).setPosition(position);
+      capturePoints.get(capturePoint).marker.setPosition(position);
       
     }
     public void teamScoreUpdate(String team, int score) {

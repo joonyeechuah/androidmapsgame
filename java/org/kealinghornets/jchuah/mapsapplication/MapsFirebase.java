@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import android.content.Context;
+import android.os.Handler;
 import android.util.Log;
 import android.widget.Toast;
 import com.firebase.client.AuthData;
@@ -80,6 +81,7 @@ public class MapsFirebase {
             	Log.d("Auth Data", "key: " + k + " value: " + authData.getAuth().get(k));
 	         }
             MapsFirebase.authData = authData;
+
             Log.d("Firebase Complete Login", "Authorized user");
             MapsFirebase.addListeners();
         }
@@ -97,6 +99,9 @@ public class MapsFirebase {
         }
     });    
   }
+  
+
+  
   
   private static void addListeners() {
     
